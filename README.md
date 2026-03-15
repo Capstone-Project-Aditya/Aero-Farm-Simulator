@@ -60,6 +60,17 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Supabase setup (required for saving simulations)
+
+This app saves simulation history to Supabase tables `simulation_runs` and `daily_states`.
+
+If you see 404 errors for endpoints like `/rest/v1/simulation_runs` or the UI says “Simulation completed but could not be saved”, it usually means the database tables haven't been created in your Supabase project.
+
+### Apply the migration
+
+- Open your Supabase project's **SQL Editor** and run the SQL in `supabase/migrations/20260311204846_78e1e28f-a584-443a-8cbf-e451e9d5c801.sql`.
+- Ensure your `.env` has `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the same project.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.

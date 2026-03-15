@@ -9,6 +9,10 @@ import { downloadCSV } from "@/lib/export";
 import { FileText, Download, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { FullResult } from "@/hooks/useSimulator";
+import {
+  formatSupabaseError,
+  isMissingSupabaseRelationWithStatus,
+} from "@/integrations/supabase/errors";
 
 interface RunRow {
   id: string;
@@ -47,22 +51,41 @@ export default function Reports() {
 
   const fetchRuns = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error, status, statusText } = await supabase
       .from("simulation_runs")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to fetch runs:", { error, status, statusText });
+      if (isMissingSupabaseRelationWithStatus(error, status, "simulation_runs")) {
+        toast.error(
+          "Database tables not found (simulation_runs). Apply the Supabase migration to enable saving/reports."
+        );
+      } else {
+        toast.error(`Failed to load reports: ${formatSupabaseError(error, status, statusText)}`);
+      }
+      setRuns([]);
+      return;
+    }
+
     setRuns((data as RunRow[]) || []);
   };
 
   useEffect(() => { fetchRuns(); }, [user]);
 
   const handleExportCSV = async (run: RunRow) => {
-    const { data: states } = await supabase
+    const { data: states, error } = await supabase
       .from("daily_states")
       .select("*")
       .eq("run_id", run.id)
       .order("day");
+
+    if (error) {
+      console.error("Failed to fetch daily states:", error);
+      toast.error(`Failed to export: ${formatSupabaseError(error)}`);
+      return;
+    }
 
     const fullResult: FullResult = {
       cropKey: run.crop_key,

@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { formatINR, formatPercent } from "@/lib/formatters";
 import { useNavigate } from "react-router-dom";
 import { FlaskConical, TrendingUp, Trophy, BarChart3, Sprout, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import {
+  formatSupabaseError,
+  isMissingSupabaseRelationWithStatus,
+} from "@/integrations/supabase/errors";
 
 interface Stats {
   totalRuns: number;
@@ -26,11 +31,27 @@ export default function DashboardOverview() {
   useEffect(() => {
     if (!user) return;
     const fetchStats = async () => {
-      const { data } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from("simulation_runs")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Failed to fetch dashboard stats:", { error, status, statusText });
+        if (isMissingSupabaseRelationWithStatus(error, status, "simulation_runs")) {
+          toast.error(
+            "Database tables not found (simulation_runs). Apply the Supabase migration to enable saving/history."
+          );
+        } else {
+          toast.error(
+            `Failed to load dashboard data: ${formatSupabaseError(error, status, statusText)}`
+          );
+        }
+        setStats(null);
+        setRecentRuns([]);
+        return;
+      }
 
       if (!data || data.length === 0) {
         setStats(null);

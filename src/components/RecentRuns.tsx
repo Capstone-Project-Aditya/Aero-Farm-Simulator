@@ -5,6 +5,11 @@ import { formatINR, formatPercent } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, Trophy } from "lucide-react";
+import { toast } from "sonner";
+import {
+  formatSupabaseError,
+  isMissingSupabaseRelationWithStatus,
+} from "@/integrations/supabase/errors";
 
 interface RunSummary {
   id: string;
@@ -29,12 +34,26 @@ export default function RecentRuns({ onLoadRun, refreshKey }: Props) {
     if (!user) return;
 
     const fetchRuns = async () => {
-      const { data } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from("simulation_runs")
         .select("id, created_at, scenario_name, crop_name, yield_kg, net_profit, roi")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(10);
+
+      if (error) {
+        console.error("Failed to fetch recent runs:", { error, status, statusText });
+        if (isMissingSupabaseRelationWithStatus(error, status, "simulation_runs")) {
+          toast.error(
+            "Database tables not found (simulation_runs). Apply the Supabase migration to enable saving/history."
+          );
+        } else {
+          toast.error(`Failed to load recent runs: ${formatSupabaseError(error, status, statusText)}`);
+        }
+        setRuns([]);
+        return;
+      }
+
       setRuns(data || []);
     };
 

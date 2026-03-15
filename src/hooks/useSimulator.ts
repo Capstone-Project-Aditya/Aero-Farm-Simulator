@@ -17,6 +17,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import {
+  formatSupabaseError,
+  isMissingSupabaseRelationWithStatus,
+} from "@/integrations/supabase/errors";
 
 export interface FullResult {
   cropKey: string;
@@ -39,10 +43,15 @@ export function useSimulator() {
 
   const saveRun = useCallback(
     async (r: FullResult) => {
-      if (!user) return null;
+      if (!user) return { ok: false as const, reason: "not-authenticated" as const };
       const crop = getCrop(r.cropKey)!;
 
-      const { data: run, error: runError } = await supabase
+      const {
+        data: run,
+        error: runError,
+        status: runStatus,
+        statusText: runStatusText,
+      } = await supabase
         .from("simulation_runs")
         .insert({
           user_id: user.id,
@@ -77,8 +86,17 @@ export function useSimulator() {
         .single();
 
       if (runError) {
-        console.error("Failed to save run:", runError);
-        return null;
+        console.error("Failed to save run:", { runError, runStatus, runStatusText });
+        if (isMissingSupabaseRelationWithStatus(runError, runStatus, "simulation_runs")) {
+          toast.error(
+            "Database tables not found (simulation_runs). Apply the Supabase migration before saving runs."
+          );
+        } else {
+          toast.error(
+            `Failed to save simulation: ${formatSupabaseError(runError, runStatus, runStatusText)}`
+          );
+        }
+        return { ok: false as const, reason: "save-failed" as const };
       }
 
       // Save daily states in batches
@@ -93,10 +111,33 @@ export function useSimulator() {
 
       const batchSize = 50;
       for (let i = 0; i < states.length; i += batchSize) {
-        await supabase.from("daily_states").insert(states.slice(i, i + batchSize));
+        const {
+          error: statesError,
+          status: statesStatus,
+          statusText: statesStatusText,
+        } = await supabase
+          .from("daily_states")
+          .insert(states.slice(i, i + batchSize));
+        if (statesError) {
+          console.error("Failed to save daily states:", {
+            statesError,
+            statesStatus,
+            statesStatusText,
+          });
+          if (isMissingSupabaseRelationWithStatus(statesError, statesStatus, "daily_states")) {
+            toast.error(
+              "Database tables not found (daily_states). Apply the Supabase migration before saving runs."
+            );
+          } else {
+            toast.error(
+              `Failed to save daily states: ${formatSupabaseError(statesError, statesStatus, statesStatusText)}`
+            );
+          }
+          return { ok: false as const, reason: "save-failed" as const };
+        }
       }
 
-      return run.id;
+      return { ok: true as const, runId: run.id };
     },
     [user]
   );
@@ -124,9 +165,13 @@ export function useSimulator() {
     };
 
     setResult(fullResult);
-    const runId = await saveRun(fullResult);
-    if (runId) toast.success("Simulation saved!");
-    else toast.info("Simulation complete (not saved - please log in)");
+    const saveResult = await saveRun(fullResult);
+    if (saveResult.ok) toast.success("Simulation saved!");
+    else if (saveResult.reason === "not-authenticated") {
+      toast.info("Simulation complete (not saved — please log in)");
+    } else {
+      toast.error("Simulation completed but could not be saved");
+    }
     setLoading(false);
   }, [cropKey, env, econ, scenarioName, saveRun]);
 
@@ -157,8 +202,13 @@ export function useSimulator() {
     };
 
     setResult(fullResult);
-    const runId = await saveRun(fullResult);
-    if (runId) toast.success("Best setup found and saved!");
+    const saveResult = await saveRun(fullResult);
+    if (saveResult.ok) toast.success("Best setup found and saved!");
+    else if (saveResult.reason === "not-authenticated") {
+      toast.info("Recommendation complete (not saved — please log in)");
+    } else {
+      toast.error("Recommendation completed but could not be saved");
+    }
     setLoading(false);
   }, [cropKey, econ, saveRun]);
 

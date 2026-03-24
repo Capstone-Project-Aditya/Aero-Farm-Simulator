@@ -20,6 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const siteUrl = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/+$/, "") ?? window.location.origin;
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -42,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { full_name: name },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: siteUrl,
       },
     });
     return { error: error as Error | null };
@@ -56,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: siteUrl },
     });
     return { error: error as Error | null };
   };
@@ -67,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${siteUrl}/reset-password`,
     });
     return { error: error as Error | null };
   };
@@ -81,6 +83,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  if (!context) {
+    console.error("useAuth was called outside AuthProvider (or context was reset during HMR)");
+    return {
+      user: null,
+      session: null,
+      loading: true,
+      signUp: async () => ({ error: new Error("Auth provider not ready") }),
+      signIn: async () => ({ error: new Error("Auth provider not ready") }),
+      signInWithGoogle: async () => ({ error: new Error("Auth provider not ready") }),
+      signOut: async () => {},
+      resetPassword: async () => ({ error: new Error("Auth provider not ready") }),
+    };
+  }
   return context;
 }

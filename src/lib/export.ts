@@ -14,11 +14,13 @@ export function generateCSV(result: FullResult): string {
   lines.push(`Total Cost (INR),${result.economics.total_cost}`);
   lines.push(`Net Profit (INR),${result.economics.net_profit}`);
   lines.push(`ROI,${result.economics.roi.toFixed(2)}%`);
+  lines.push(`Water Cost (INR),${result.economics.water_cost}`);
+  lines.push(`Total Water (L),${result.sim.total_water_litres ?? 0}`);
   lines.push("");
-  lines.push("Day,Biomass Per Plant (g),Biomass Total (kg),Stress Factor,Growth Stage");
+  lines.push("Day,Biomass Per Plant (g),Biomass Total (kg),Stress Factor,Growth Stage,Nutrient Uptake (g),Water Usage (L)");
   
   for (const s of result.sim.daily_states) {
-    lines.push(`${s.day},${s.biomass_per_plant_g},${s.biomass_total_kg},${s.stress_factor},${s.growth_stage}`);
+    lines.push(`${s.day},${s.biomass_per_plant_g},${s.biomass_total_kg},${s.stress_factor},${s.growth_stage},${s.nutrient_uptake_g ?? 0},${s.water_usage_litres ?? 0}`);
   }
   
   return lines.join("\n");
@@ -47,6 +49,7 @@ export function emailReport(result: FullResult) {
     `Success: ${(result.sim.success_probability * 100).toFixed(1)}%\n\n` +
     `Revenue: ${formatINR(result.economics.revenue)}\n` +
     `Total Cost: ${formatINR(result.economics.total_cost)}\n` +
+    `Water Cost: ${formatINR(result.economics.water_cost)}\n` +
     `Net Profit: ${formatINR(result.economics.net_profit)}\n` +
     `ROI: ${result.economics.roi.toFixed(2)}%\n` +
     `Payback: ${result.economics.payback_period_years > 0 ? result.economics.payback_period_years.toFixed(1) + " years" : "N/A"}\n\n` +

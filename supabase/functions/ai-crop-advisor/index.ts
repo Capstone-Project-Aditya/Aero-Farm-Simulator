@@ -1,24 +1,115 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function formatNumber(value: unknown, digits: number): string {
+  const n = toFiniteNumber(value);
+  return n === null ? "n/a" : n.toFixed(digits);
+}
+
+function formatInteger(value: unknown): string {
+  const n = toFiniteNumber(value);
+  return n === null ? "n/a" : Math.round(n).toString();
+}
+
+function getAuthorizationHeader(req: Request): string | null {
+  const header = req.headers.get("authorization");
+  if (!header) return null;
+  if (!header.toLowerCase().startsWith("bearer ")) return null;
+  return header;
+}
+
+async function requireSupabaseUser(req: Request) {
+  const authorization = getAuthorizationHeader(req);
+  if (!authorization) {
+    return {
+      user: null,
+      response: new Response(JSON.stringify({ error: "Missing or invalid authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }),
+    } as const;
+  }
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return {
+      user: null,
+      response: new Response(JSON.stringify({ error: "Supabase env vars missing in function runtime" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }),
+    } as const;
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: authorization } },
+  });
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) {
+    console.error("Auth rejected:", error);
+    return {
+      user: null,
+      response: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }),
+    } as const;
+  }
+
+  return { user: data.user, response: null } as const;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // With verify_jwt disabled at the gateway, enforce auth explicitly here.
+    const auth = await requireSupabaseUser(req);
+    if (auth.response) return auth.response;
+
     const { crop_key, simulation_history } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+
+    const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-1.5-flash";
 
     // Build context from simulation history
     let historyContext = "";
     if (simulation_history && simulation_history.length > 0) {
-      const summary = simulation_history.map((r: any) => 
-        `- ${r.scenario_name} (${r.crop_name}): Yield=${r.yield_kg?.toFixed(2)}kg, ROI=${(r.roi * 100).toFixed(1)}%, Profit=₹${r.net_profit?.toFixed(0)}, Temp=${r.temperature_c}°C, Light=${r.light_hours_per_day}h, CO2=${r.co2_ppm}ppm, Plants=${r.plant_count}`
-      ).join("\n");
+      const summary = simulation_history
+        .map((r: any) => {
+          const scenario = typeof r?.scenario_name === "string" && r.scenario_name.trim() ? r.scenario_name : "Unnamed run";
+          const cropName = typeof r?.crop_name === "string" && r.crop_name.trim() ? r.crop_name : "Unknown crop";
+
+          const roi = toFiniteNumber(r?.roi);
+          const roiPercent = roi === null ? "n/a" : (roi * 100).toFixed(1);
+
+          const temp = formatNumber(r?.temperature_c, 1);
+          const light = formatNumber(r?.light_hours_per_day, 1);
+          const co2 = formatInteger(r?.co2_ppm);
+          const plants = formatInteger(r?.plant_count);
+
+          return `- ${scenario} (${cropName}): Yield=${formatNumber(r?.yield_kg, 2)}kg, ROI=${roiPercent}%, Profit=₹${formatInteger(r?.net_profit)}, Temp=${temp}°C, Light=${light}h, CO2=${co2}ppm, Plants=${plants}`;
+        })
+        .join("\n");
       historyContext = `\n\nUser's simulation history (most recent first):\n${summary}`;
     }
 
@@ -40,29 +131,105 @@ Provide recommendations in clear markdown with:
 
 Use Indian Rupees (₹) for all monetary values. Be specific with numbers.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const userPrompt = `Give me an optimal crop recommendation for growing "${crop_key}" in an indoor aeroponic system. Include specific environment settings, expected economics, and actionable tips.${historyContext}`;
+
+    const payload = {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Give me an optimal crop recommendation for growing "${crop_key}" in an indoor aeroponic system. Include specific environment settings, expected economics, and actionable tips.${historyContext}`,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: userPrompt }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.6,
+        topP: 0.9,
+        maxOutputTokens: 1200,
+      },
+    };
+
+    // Google has changed Gemini REST endpoints and available model IDs over time.
+    // We try:
+    // - API versions: v1beta then v1
+    // - Model IDs: configured model first, then common fallbacks
+    const candidateModels = Array.from(
+      new Set(
+        [
+          GEMINI_MODEL,
+          "gemini-1.5-flash",
+          "gemini-1.5-flash-latest",
+          "gemini-1.5-pro",
+          "gemini-1.5-pro-latest",
+        ].filter(Boolean)
+      )
+    );
+
+    const buildUrls = (model: string) => [
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+      `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+    ];
+
+    let response: Response | null = null;
+    let lastText: string | null = null;
+    let lastStatus: number | null = null;
+    let modelUsed: string | null = null;
+
+    outer: for (const model of candidateModels) {
+      for (const url of buildUrls(model)) {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ],
-        stream: false,
-      }),
-    });
+          body: JSON.stringify(payload),
+        });
+
+        if (r.ok) {
+          response = r;
+          modelUsed = model;
+          break outer;
+        }
+
+        const status = r.status;
+        const text = await r.text();
+        lastStatus = status;
+        lastText = text;
+
+        // If the endpoint or model isn't found on this API version, try the next.
+        if (status === 404) continue;
+
+        // Any other status (401/403/429/400/5xx) is not a "try next" situation.
+        response = new Response(text, {
+          status,
+          headers: r.headers,
+        });
+        modelUsed = model;
+        break outer;
+      }
+    }
+
+    if (!response) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Gemini API error: 404 (model or endpoint not found). Check GEMINI_MODEL and ensure the Generative Language API is enabled for your API key.",
+          tried_models: candidateModels,
+          last_status: lastStatus,
+          details: lastText ? lastText.slice(0, 800) : undefined,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (!response.ok) {
       const status = response.status;
       const text = await response.text();
-      console.error("AI gateway error:", status, text);
+      console.error("Gemini API error:", status, text ?? lastText);
       
       if (status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
@@ -70,19 +237,45 @@ Use Indian Rupees (₹) for all monetary values. Be specific with numbers.`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required" }), {
-          status: 402,
+
+      if (status === 400) {
+        return new Response(JSON.stringify({ error: "Bad request to Gemini API" }), {
+          status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI gateway error: ${status}`);
+
+      if (status === 404) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Gemini API returned 404 (model not found). Set GEMINI_MODEL to a valid model (for example: gemini-1.5-flash, gemini-1.5-flash-latest, gemini-1.5-pro) and redeploy.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      if (status === 401 || status === 403) {
+        return new Response(JSON.stringify({ error: "Gemini API key is invalid or missing permissions" }), {
+          status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      throw new Error(`Gemini API error: ${status}`);
     }
 
     const data = await response.json();
-    const recommendation = data.choices?.[0]?.message?.content || "Unable to generate recommendation.";
+    const recommendation =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .join("")
+        .trim() || "Unable to generate recommendation.";
 
-    return new Response(JSON.stringify({ recommendation }), {
+    return new Response(JSON.stringify({ recommendation, model_used: modelUsed ?? GEMINI_MODEL }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

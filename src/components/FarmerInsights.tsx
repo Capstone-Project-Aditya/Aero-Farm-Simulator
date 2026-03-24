@@ -22,7 +22,7 @@ export default function FarmerInsights({ result }: Props) {
 
   if (sim.success_probability < 0.5) {
     insights.push(
-      "🌡️ High environmental stress detected. Your temperature, light, or CO₂ settings are far from optimal for this crop. Adjust them closer to the crop's ideal range."
+      "🌡️ High environmental stress detected. Your temperature, light, CO₂, pH, or EC settings are far from optimal for this crop. Adjust them closer to the green zones shown on the sliders."
     );
   } else if (sim.success_probability > 0.85) {
     insights.push(
@@ -62,6 +62,26 @@ export default function FarmerInsights({ result }: Props) {
     );
   }
 
+  if (economics.water_cost > economics.total_cost * 0.15) {
+    insights.push(
+      "💧 Water costs are significant (>15% of total). Consider recirculating nutrient solution or harvesting rainwater to reduce water expenses."
+    );
+  }
+
+  // Water usage insight
+  if (sim.total_water_litres > 0) {
+    const waterPerKg = sim.total_water_litres / Math.max(sim.yield_kg, 0.001);
+    if (waterPerKg < 50) {
+      insights.push(
+        `💦 Water efficiency is excellent — only ${waterPerKg.toFixed(0)} litres per kg of yield. Aeroponics is significantly more water-efficient than traditional farming.`
+      );
+    } else {
+      insights.push(
+        `💦 Water usage: ${sim.total_water_litres.toFixed(0)} litres total (${waterPerKg.toFixed(0)} L/kg). Aeroponics uses 90% less water than soil farming.`
+      );
+    }
+  }
+
   return (
     <Card className="shadow-card border-l-4 border-l-primary">
       <CardHeader className="pb-2">
@@ -71,9 +91,9 @@ export default function FarmerInsights({ result }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {insights.map((insight, i) => (
-            <p key={i} className="text-sm leading-relaxed">
+            <p key={i} className="text-sm leading-relaxed p-2 rounded-lg hover:bg-muted/30 transition-colors">
               {insight}
             </p>
           ))}

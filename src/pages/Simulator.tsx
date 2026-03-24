@@ -4,6 +4,9 @@ import SimulationForm from "@/components/SimulationForm";
 import ResultCards from "@/components/ResultCards";
 import GrowthChart from "@/components/GrowthChart";
 import FarmerInsights from "@/components/FarmerInsights";
+import EnvironmentGauge from "@/components/EnvironmentGauge";
+import CostBreakdownChart from "@/components/CostBreakdownChart";
+import SensitivityAnalysis from "@/components/SensitivityAnalysis";
 import RecentRuns from "@/components/RecentRuns";
 import { Button } from "@/components/ui/button";
 import { downloadCSV, emailReport } from "@/lib/export";
@@ -22,6 +25,11 @@ export default function Simulator() {
     await sim.recommend();
     setRefreshKey((k) => k + 1);
   };
+
+  // Calculate average stress for the gauge
+  const avgStress = sim.result
+    ? sim.result.sim.daily_states.reduce((s, d) => s + d.stress_factor, 0) / sim.result.sim.daily_states.length
+    : 0;
 
   return (
     <div className="container py-6">
@@ -43,6 +51,8 @@ export default function Simulator() {
             setEnv={sim.setEnv}
             econ={sim.econ}
             setEcon={sim.setEcon}
+            externalTemp={sim.externalTemp}
+            setExternalTemp={sim.setExternalTemp}
             onSimulate={handleSimulate}
             onRecommend={handleRecommend}
             loading={sim.loading}
@@ -67,8 +77,18 @@ export default function Simulator() {
                 </div>
               </div>
               <ResultCards result={sim.result} />
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <EnvironmentGauge
+                  successProbability={sim.result.sim.success_probability}
+                  stressFactor={avgStress}
+                />
+                <CostBreakdownChart economics={sim.result.economics} />
+              </div>
+
               <GrowthChart dailyStates={sim.result.sim.daily_states} />
               <FarmerInsights result={sim.result} />
+              <SensitivityAnalysis result={sim.result} />
             </>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-12 text-center">

@@ -7,12 +7,17 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AuthPage from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import LandingPage from "@/pages/LandingPage";
 import AppLayout from "@/components/AppLayout";
 import DashboardOverview from "@/pages/DashboardOverview";
 import Simulator from "@/pages/Simulator";
 import AIInsights from "@/pages/AIInsights";
 import Compare from "@/pages/Compare";
 import Reports from "@/pages/Reports";
+import CropEncyclopedia from "@/pages/CropEncyclopedia";
+import ActiveFarm from "@/pages/ActiveFarm";
+import PlantHealth from "@/pages/PlantHealth";
+import BusinessPlanner from "@/pages/BusinessPlanner";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +26,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse font-display text-muted-foreground">Loading...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="font-display text-muted-foreground">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -32,18 +40,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 const AppRoutes = () => (
   <Routes>
+    {/* Public routes */}
+    <Route path="/" element={<LandingPage />} />
     <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
     <Route path="/reset-password" element={<ResetPassword />} />
+
+    {/* Protected routes */}
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-      <Route path="/" element={<DashboardOverview />} />
+      <Route path="/dashboard" element={<DashboardOverview />} />
       <Route path="/simulator" element={<Simulator />} />
+      <Route path="/my-farm" element={<ActiveFarm />} />
+      <Route path="/crops" element={<CropEncyclopedia />} />
       <Route path="/ai-insights" element={<AIInsights />} />
+      <Route path="/plant-health" element={<PlantHealth />} />
+      <Route path="/business-planner" element={<BusinessPlanner />} />
       <Route path="/compare" element={<Compare />} />
       <Route path="/reports" element={<Reports />} />
     </Route>

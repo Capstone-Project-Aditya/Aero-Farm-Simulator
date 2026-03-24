@@ -39,8 +39,12 @@ export function findBestSetup(
     crop.optimal_co2_ppm,
     Math.min(1500, crop.optimal_co2_ppm + 200),
   ];
-  const plantCounts = [50, 100, 200, 300, 500];
-  const lightPowers = [1, 2, 3];
+  // Expanded plant count range — low-value crops need scale
+  const plantCounts = [500, 1000, 2000, 3000, 5000, 7500, 10000];
+  const lightPowers = [0.5, 1, 2];
+
+  const bestPh = (crop.water_ph_min + crop.water_ph_max) / 2;
+  const bestEc = (crop.ec_min + crop.ec_max) / 2;
 
   for (const temp of tempRange) {
     for (const light of lightRange) {
@@ -54,6 +58,8 @@ export function findBestSetup(
               light_power_kw: power,
               co2_ppm: co2,
               plant_count: plants,
+              water_ph: bestPh,
+              ec_ms_cm: bestEc,
             };
 
             const simResult = runSimulation(crop, env);
@@ -62,12 +68,15 @@ export function findBestSetup(
               simResult.cycle_days,
               crop,
               env,
-              econ
+              econ,
+              simResult.total_water_litres
             );
 
-            // Score: prioritize ROI and success probability
+            // Score: prioritize profit first, then ROI
             const score =
-              econResult.roi * 1 + simResult.success_probability * 50;
+              (econResult.net_profit > 0 ? 1000 : 0) +
+              econResult.roi * 1 +
+              simResult.success_probability * 50;
 
             candidates.push({ env, simResult, econResult, score });
           }

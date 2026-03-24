@@ -1,4 +1,4 @@
-import { LayoutDashboard, FlaskConical, GitCompareArrows, FileText, Brain, LogOut, User } from "lucide-react";
+import { LayoutDashboard, FlaskConical, GitCompareArrows, FileText, Brain, LogOut, User, BookOpen, Leaf, Activity, Calculator } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,9 +17,13 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "My Farm", url: "/my-farm", icon: Leaf },
   { title: "Simulator", url: "/simulator", icon: FlaskConical },
+  { title: "Crop Encyclopedia", url: "/crops", icon: BookOpen },
   { title: "AI Insights", url: "/ai-insights", icon: Brain },
+  { title: "Plant Scanner", url: "/plant-health", icon: Activity },
+  { title: "Business Planner", url: "/business-planner", icon: Calculator },
   { title: "Compare", url: "/compare", icon: GitCompareArrows },
   { title: "Reports", url: "/reports", icon: FileText },
 ];
@@ -42,7 +46,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={item.url === "/dashboard"}
                       className="hover:bg-muted/50"
                       activeClassName="bg-muted text-primary font-medium"
                     >

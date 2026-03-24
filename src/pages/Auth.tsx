@@ -47,10 +47,31 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-elevated">
+    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+      {/* Animated gradient background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-primary/5 animate-gradient-shift" />
+
+      {/* Floating plant icons */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {["🌿", "🌱", "🍃", "🌾", "🥬", "🌸", "🍅", "🥒"].map((emoji, i) => (
+          <span
+            key={i}
+            className="absolute text-2xl opacity-10 animate-float"
+            style={{
+              left: `${10 + (i * 12) % 80}%`,
+              top: `${5 + (i * 17) % 85}%`,
+              animationDelay: `${i * 1.2}s`,
+              animationDuration: `${6 + i * 0.5}s`,
+            }}
+          >
+            {emoji}
+          </span>
+        ))}
+      </div>
+
+      <Card className="relative z-10 w-full max-w-md shadow-elevated border-primary/10">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">
             <Sprout className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="font-display text-2xl">AeroFarm Simulator</CardTitle>

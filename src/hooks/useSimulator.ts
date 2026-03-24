@@ -38,6 +38,7 @@ export function useSimulator() {
   const [scenarioName, setScenarioName] = useState("");
   const [env, setEnv] = useState<EnvironmentConfig>({ ...DEFAULT_ENVIRONMENT });
   const [econ, setEcon] = useState<EconomicConfig>({ ...DEFAULT_ECONOMICS });
+  const [externalTemp, setExternalTemp] = useState<number | undefined>();
   const [result, setResult] = useState<FullResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -81,7 +82,7 @@ export function useSimulator() {
           net_profit: r.economics.net_profit,
           roi: r.economics.roi,
           payback_period_years: r.economics.payback_period_years,
-        })
+        } as any)
         .select()
         .single();
 
@@ -152,7 +153,7 @@ export function useSimulator() {
     }
 
     const sim = runSimulation(crop, env);
-    const economics = evaluateEconomics(sim.yield_kg, sim.cycle_days, crop, env, econ);
+    const economics = evaluateEconomics(sim.yield_kg, sim.cycle_days, crop, env, econ, sim.total_water_litres, externalTemp);
 
     const fullResult: FullResult = {
       cropKey,
@@ -173,7 +174,7 @@ export function useSimulator() {
       toast.error("Simulation completed but could not be saved");
     }
     setLoading(false);
-  }, [cropKey, env, econ, scenarioName, saveRun]);
+  }, [cropKey, env, econ, externalTemp, scenarioName, saveRun]);
 
   const recommend = useCallback(async () => {
     setLoading(true);
@@ -238,14 +239,19 @@ export function useSimulator() {
         light_power_kw: run.light_power_kw,
         co2_ppm: run.co2_ppm,
         plant_count: run.plant_count,
+        water_ph: 6.0,
+        ec_ms_cm: 1.5,
       };
 
       const loadedEcon: EconomicConfig = {
         electricity_price_per_kwh: run.electricity_price_per_kwh,
         labour_cost_per_day: run.labour_cost_per_day,
+        labour_cost_per_plant_per_day: 0.05,
         nutrient_cost_per_day: run.nutrient_cost_per_day,
+        nutrient_cost_per_plant_per_day: 0.1,
         infrastructure_capex: run.infrastructure_capex,
         payback_horizon_years: run.payback_horizon_years,
+        water_cost_per_litre: 0.3,
       };
 
       setCropKey(run.crop_key);
@@ -259,6 +265,8 @@ export function useSimulator() {
         biomass_total_kg: s.biomass_total_kg,
         stress_factor: s.stress_factor,
         growth_stage: s.growth_stage,
+        nutrient_uptake_g: 0,
+        water_usage_litres: 0,
       }));
 
       setResult({
@@ -272,11 +280,13 @@ export function useSimulator() {
           yield_kg: run.yield_kg,
           success_probability: run.success_probability,
           cycle_days: run.cycle_days,
+          total_water_litres: 0,
         },
         economics: {
           electricity_cost: run.electricity_cost,
           labour_cost: run.labour_cost,
           nutrient_cost: run.nutrient_cost,
+          water_cost: 0,
           infrastructure_cost_per_cycle: run.infrastructure_cost_per_cycle,
           total_cost: run.total_cost,
           revenue: run.revenue,
@@ -297,7 +307,10 @@ export function useSimulator() {
     cropKey, setCropKey,
     scenarioName, setScenarioName,
     env, setEnv,
-    econ, setEcon,
+    econ,
+    setEcon,
+    externalTemp,
+    setExternalTemp,
     result,
     loading,
     simulate,

@@ -3,7 +3,7 @@ import { formatINR, formatPercent, formatKg, formatYears } from "@/lib/formatter
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Leaf, TrendingUp, TrendingDown, DollarSign, Clock,
-  Target, BarChart3, Scale
+  Target, BarChart3, Scale, Droplets
 } from "lucide-react";
 
 interface Props {
@@ -25,9 +25,9 @@ function MetricCard({ label, value, icon, variant = "default" }: MetricCardProps
     : "text-foreground";
 
   return (
-    <Card className="shadow-card hover:shadow-elevated transition-shadow">
+    <Card className="shadow-card hover:shadow-elevated transition-all duration-300 hover:-translate-y-0.5 group">
       <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary group-hover:bg-primary/10 transition-colors">
           {icon}
         </div>
         <div className="min-w-0">
@@ -91,6 +91,11 @@ export default function ResultCards({ result }: Props) {
           label="Payback Period"
           value={formatYears(economics.payback_period_years)}
           icon={<Clock className="h-5 w-5 text-muted-foreground" />}
+        />
+        <MetricCard
+          label="Water Cost"
+          value={formatINR(economics.water_cost)}
+          icon={<Droplets className="h-5 w-5 text-info" />}
         />
         <MetricCard
           label="Cost / kg"

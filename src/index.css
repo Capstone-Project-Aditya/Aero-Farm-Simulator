@@ -107,6 +107,10 @@
     --warning-foreground: 38 90% 95%;
     --profit: 152 60% 50%;
     --loss: 0 62% 50%;
+
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
+    --shadow-elevated: 0 10px 25px -5px hsl(0 0% 0% / 0.3), 0 8px 10px -6px hsl(0 0% 0% / 0.15);
+    --shadow-glow: 0 0 20px hsl(152 55% 45% / 0.2);
   }
 }
 
@@ -132,6 +136,9 @@
   .text-loss {
     color: hsl(var(--loss));
   }
+  .text-info {
+    color: hsl(var(--info));
+  }
   .bg-success {
     background-color: hsl(var(--success));
   }
@@ -140,6 +147,9 @@
   }
   .bg-warning {
     background-color: hsl(var(--warning));
+  }
+  .bg-info {
+    background-color: hsl(var(--info));
   }
   .shadow-card {
     box-shadow: var(--shadow-card);
@@ -150,4 +160,45 @@
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }
+}
+
+/* Floating animation for auth background */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.08;
+  }
+  25% {
+    transform: translateY(-20px) rotate(5deg);
+    opacity: 0.12;
+  }
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+    opacity: 0.06;
+  }
+  75% {
+    transform: translateY(-25px) rotate(2deg);
+    opacity: 0.1;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease-in-out infinite;
 }

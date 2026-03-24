@@ -2,13 +2,39 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+function normalizeEnv(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  // Vite/dotenv usually strips quotes, but normalize anyway to avoid malformed headers.
+  return trimmed.replace(/^['"]|['"]$/g, "");
+}
+
+const SUPABASE_URL = normalizeEnv(import.meta.env.VITE_SUPABASE_URL);
+// Prefer the standard Supabase anon key. Keep backward compatibility with older env var name.
+const SUPABASE_ANON_KEY =
+  normalizeEnv(import.meta.env.VITE_SUPABASE_ANON_KEY) ??
+  normalizeEnv(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+
+if (typeof window !== "undefined") {
+  if (SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.startsWith("eyJ")) {
+    console.warn(
+      "VITE_SUPABASE_ANON_KEY does not look like a Supabase anon JWT (expected to start with eyJ...). Edge Function calls may 401.",
+      { hasAnonKey: Boolean(SUPABASE_ANON_KEY) }
+    );
+  }
+}
+
+export const supabaseConfig = {
+  url: SUPABASE_URL as string | undefined,
+  anonKey: SUPABASE_ANON_KEY as string | undefined,
+  anonKeyPresent: Boolean(SUPABASE_ANON_KEY),
+  isConfigured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
+};
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,

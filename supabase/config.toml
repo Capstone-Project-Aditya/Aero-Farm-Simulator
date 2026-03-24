@@ -1,1 +1,25 @@
 project_id = "kcbbbyizvofbbsjrlbte"
+
+[functions.ai-crop-advisor]
+verify_jwt = false
+[functions.gemini-calendar]
+enabled = true
+verify_jwt = true
+import_map = "./functions/gemini-calendar/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/gemini-calendar/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/gemini-calendar/*.html" ]
+
+[functions.gemini-vision]
+enabled = true
+verify_jwt = true
+import_map = "./functions/gemini-vision/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/gemini-vision/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/gemini-vision/*.html" ]

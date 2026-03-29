@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Sprout, Sun, DollarSign, Zap, Lightbulb, Droplets, CloudRain, RotateCcw, Loader2 } from "lucide-react";
+import { Sprout, Sun, DollarSign, Zap, Lightbulb, Droplets, CloudRain, RotateCcw, Loader2, BrainCircuit } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -22,6 +22,9 @@ interface Props {
   onSimulate: () => void;
   onRecommend: () => void;
   loading: boolean;
+  useML?: boolean;
+  setUseML?: (v: boolean) => void;
+  mlEpoch?: { current: number; total: number };
 }
 
 function OptimalRangeSlider({
@@ -85,6 +88,7 @@ export default function SimulationForm({
   cropKey, setCropKey, scenarioName, setScenarioName,
   env, setEnv, econ, setEcon,
   externalTemp, setExternalTemp,
+  useML, setUseML, mlEpoch,
   onSimulate, onRecommend, loading,
 }: Props & { externalTemp?: number, setExternalTemp?: (t: number | undefined) => void }) {
   const [citySync, setCitySync] = useState<CityKey>("delhi");
@@ -326,6 +330,46 @@ export default function SimulationForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* ML Engine Toggle */}
+      {setUseML && (
+        <Card className="shadow-card border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-semibold flex items-center gap-1.5 text-primary">
+                  <BrainCircuit className="h-4 w-4" /> TensorFlow.js AI Engine
+                </Label>
+                <div className="text-xs text-muted-foreground mr-2">
+                  Train a Neural Network in your browser instead of math.
+                </div>
+              </div>
+              <Button 
+                variant={useML ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseML(!useML)}
+                className={useML ? "bg-primary text-primary-foreground min-w-[60px]" : "min-w-[60px]"}
+              >
+                {useML ? "ON" : "OFF"}
+              </Button>
+            </div>
+            {useML && mlEpoch && mlEpoch.total > 0 && (
+              <div className="space-y-1 mt-2">
+                <div className="flex justify-between text-xs font-medium text-primary">
+                  <span>Training ML Model...</span>
+                  <span>Epoch {mlEpoch.current} / {mlEpoch.total}</span>
+                </div>
+                <div className="h-1.5 w-full bg-primary/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300 ease-out" 
+                    style={{ width: `${(mlEpoch.current / mlEpoch.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3">

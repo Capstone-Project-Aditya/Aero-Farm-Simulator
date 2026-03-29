@@ -14,6 +14,9 @@ import {
   evaluateEconomics,
   findBestSetup,
 } from "@/lib/simulation";
+import * as tf from "@tensorflow/tfjs";
+import { buildModel, predictYieldAndStress } from "@/lib/ml/tensorflowEngine";
+import { generateEmpiricalData } from "@/lib/ml/training";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -30,6 +33,7 @@ export interface FullResult {
   econ: EconomicConfig;
   sim: SimulationResult;
   economics: EconomicResult;
+  isML?: boolean;
 }
 
 export function useSimulator() {
@@ -41,6 +45,8 @@ export function useSimulator() {
   const [externalTemp, setExternalTemp] = useState<number | undefined>();
   const [result, setResult] = useState<FullResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [useML, setUseML] = useState(false);
+  const [mlEpoch, setMlEpoch] = useState({ current: 0, total: 0 });
 
   const saveRun = useCallback(
     async (r: FullResult) => {
@@ -152,7 +158,41 @@ export function useSimulator() {
       return;
     }
 
-    const sim = runSimulation(crop, env);
+    let sim: SimulationResult;
+
+    if (useML) {
+      toast.info("Fetching Real World Empirical Data...");
+      const { xs, ys } = generateEmpiricalData(crop);
+      const model = buildModel();
+      
+      toast.info("Training Neural Network...");
+      await model.fit(xs, ys, {
+        epochs: 50,
+        callbacks: {
+          onEpochEnd: (epoch) => {
+            setMlEpoch({ current: epoch + 1, total: 50 });
+          }
+        }
+      });
+      
+      const prediction = predictYieldAndStress(model, env);
+      
+      // Generate physics base for charts, but overwrite the final values with the ML network outputs
+      sim = runSimulation(crop, env);
+      sim.yield_kg = prediction.predictedYield;
+      if (sim.daily_states.length > 0) {
+        sim.daily_states[sim.daily_states.length - 1].stress_factor = prediction.predictedStress;
+      }
+      
+      tf.dispose([xs, ys]);
+      model.dispose();
+      
+      setMlEpoch({ current: 0, total: 0 });
+      toast.success("ML Engine Training Complete!");
+    } else {
+      sim = runSimulation(crop, env);
+    }
+
     const economics = evaluateEconomics(sim.yield_kg, sim.cycle_days, crop, env, econ, sim.total_water_litres, externalTemp);
 
     const fullResult: FullResult = {
@@ -163,6 +203,7 @@ export function useSimulator() {
       econ: { ...econ },
       sim,
       economics,
+      isML: useML
     };
 
     setResult(fullResult);
@@ -174,7 +215,7 @@ export function useSimulator() {
       toast.error("Simulation completed but could not be saved");
     }
     setLoading(false);
-  }, [cropKey, env, econ, externalTemp, scenarioName, saveRun]);
+  }, [cropKey, env, econ, externalTemp, scenarioName, saveRun, useML]);
 
   const recommend = useCallback(async () => {
     setLoading(true);
@@ -316,5 +357,8 @@ export function useSimulator() {
     simulate,
     recommend,
     loadRun,
+    useML,
+    setUseML,
+    mlEpoch,
   };
 }

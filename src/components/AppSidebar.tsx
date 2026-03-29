@@ -1,4 +1,4 @@
-import { LayoutDashboard, FlaskConical, GitCompareArrows, FileText, Brain, LogOut, User, BookOpen, Leaf, Activity, Calculator } from "lucide-react";
+import { LayoutDashboard, FlaskConical, GitCompareArrows, FileText, Brain, LogOut, User, BookOpen, Leaf, Activity, Calculator, BrainCircuit } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ const navItems = [
   { title: "Crop Encyclopedia", url: "/crops", icon: BookOpen },
   { title: "AI Insights", url: "/ai-insights", icon: Brain },
   { title: "Plant Scanner", url: "/plant-health", icon: Activity },
+  { title: "ML Analytics", url: "/ml-analytics", icon: BrainCircuit },
   { title: "Business Planner", url: "/business-planner", icon: Calculator },
   { title: "Compare", url: "/compare", icon: GitCompareArrows },
   { title: "Reports", url: "/reports", icon: FileText },

@@ -53,6 +53,9 @@ export default function Simulator() {
             setEcon={sim.setEcon}
             externalTemp={sim.externalTemp}
             setExternalTemp={sim.setExternalTemp}
+            useML={sim.useML}
+            setUseML={sim.setUseML}
+            mlEpoch={sim.mlEpoch}
             onSimulate={handleSimulate}
             onRecommend={handleRecommend}
             loading={sim.loading}

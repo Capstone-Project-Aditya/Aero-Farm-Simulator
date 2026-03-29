@@ -18,6 +18,7 @@ import CropEncyclopedia from "@/pages/CropEncyclopedia";
 import ActiveFarm from "@/pages/ActiveFarm";
 import PlantHealth from "@/pages/PlantHealth";
 import BusinessPlanner from "@/pages/BusinessPlanner";
+import MLAnalytics from "@/pages/MLAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const AppRoutes = () => (
       <Route path="/ai-insights" element={<AIInsights />} />
       <Route path="/plant-health" element={<PlantHealth />} />
       <Route path="/business-planner" element={<BusinessPlanner />} />
+      <Route path="/ml-analytics" element={<MLAnalytics />} />
       <Route path="/compare" element={<Compare />} />
       <Route path="/reports" element={<Reports />} />
     </Route>

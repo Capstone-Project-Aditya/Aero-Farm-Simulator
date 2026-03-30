@@ -1,80 +1,282 @@
-# AeroFarm — Advanced Indoor Aeroponic Farming Simulator
+\
+# AeroFarm Simulator
 
-<p align="center">
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" />
-  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
-  <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white" />
-</p>
+Indoor aeroponic crop **growth + profitability simulator** with:
 
-## Overview
-**AeroFarm** is an advanced, physics-based thermodynamic simulator and active farm management platform designed for indoor aeroponic agriculture. Developed as a comprehensive Capstone Project, this platform allows agricultural engineers, hobbyists, and commercial farmers to accurately predict crop yields, evaluate multi-year financial ROI, diagnose plant diseases via AI, and manage daily thermodynamic schedules—all before investing capital into physical hardware.
+- Auth (email/password + Google OAuth via Supabase)
+- Simulation engine (growth model + economics)
+- Dashboard + reports (Supabase-backed history)
+- Side-by-side comparison of runs
+- AI Crop Advisor (Supabase Edge Function)
 
-## 🚀 Key Features
+Deployed app (example): https://aero-farm-simulator.vercel.app
 
-### 1. Thermodynamic Growth Engine
-Run deterministic, physics-based simulations forecasting biomass, yield, and plant stress based on environmental inputs (Temperature, Light Hours, CO₂, pH, EC, etc.). The engine scales across 10+ different crop variants.
+---
 
-### 2. Live Weather API Sync
-By integrating with the global **Open-Meteo API**, AeroFarm escapes the assumption of perfect insulation. Sync the simulator to any major city (e.g., Dubai, London, New Delhi) to calculate the actual real-world **HVAC cooling costs** required to maintain your target indoor environment against the external temperature. 
+## Table of contents
 
-### 3. Business ROI Planner
-A dedicated professional tool for calculating the financial viability of an aeroponic farm. Input your available capital and real estate constraints, and the planner automatically calculates maximum structural capacities, amortized infrastructure CapEx, and generates a **5-Year Cash Flow Projection Chart**.
+- [Tech stack](#tech-stack)
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [Supabase setup](#supabase-setup)
+- [Authentication setup](#authentication-setup)
+- [AI Crop Advisor (Edge Function)](#ai-crop-advisor-edge-function)
+- [Deploy to Vercel](#deploy-to-vercel)
+- [Scripts](#scripts)
+- [Project structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [Security notes](#security-notes)
 
-### 4. AI Plant Pathology Scanner (Gemini 2.0 Vision)
-Upload photos of infected or struggling crops directly into the Plant Scanner. Powered by **Google Gemini 2.0 Flash Vision** via edge functions, the AI identifies specific pathogens (e.g., Powdery Mildew, Spider Mites) and generates a structured, organic treatment and prevention plan.
+---
 
-### 5. AI Farm Manager & Calendar Sync
-Launch a simulation into an "Active Farm cycle". The AI automatically generates a day-by-day agronomic care schedule based on the selected crop. Export this schedule directly to **Google/Apple Calendar (.ics)** so you never miss a nutrient flush, EC calibration, or harvest day.
+## Tech stack
 
-## 🛠 Tech Stack
-- **Frontend Framework:** React 18 (Vite)
-- **Language:** TypeScript
-- **Styling & UI:** Tailwind CSS, `shadcn/ui`, Framer Motion, Recharts
-- **Backend & Database:** Supabase (PostgreSQL), Edge Functions (Deno)
-- **AI Integrations:** Google Gemini Pro & Gemini Flash Vision Multimodal APIs
+- **Frontend:** Vite + React + TypeScript
+- **UI:** Tailwind CSS + shadcn-ui (Radix UI)
+- **Data layer:** Supabase (Auth, PostgREST, Edge Functions)
+- **Charts:** Chart.js / Recharts
+- **Testing:** Vitest (+ Testing Library)
+- **Linting:** ESLint
 
-## 📦 Local Setup & Deployment
+---
 
-1. **Clone the repository**
-   \`\`\`bash
-   git clone https://github.com/your-username/aeroponic-ace.git
-   cd aeroponic-ace
-   \`\`\`
+## Quick start
 
-2. **Install dependencies**
-   \`\`\`bash
-   npm install
-   \`\`\`
+### Prerequisites
 
-3. **Configure Environment Variables**
-   Create a \`.env\` file in the root directory and add your Supabase credentials:
-   \`\`\`env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   \`\`\`
-   
-   To use the AI capabilities, ensure you have set your `GEMINI_API_KEY` in your Supabase project's secret manager:
-   \`\`\`bash
-   supabase secrets set GEMINI_API_KEY=your_api_key
-   \`\`\`
+- Node.js **18+** (recommended: latest LTS)
+- npm (or your preferred Node package manager)
+- A Supabase project (required for auth + saving simulation runs)
 
-4. **Deploy Edge Functions (For AI Features)**
-   \`\`\`bash
-   supabase functions deploy gemini
-   supabase functions deploy gemini-vision
-   supabase functions deploy gemini-calendar
-   \`\`\`
+### 1) Install
 
-5. **Start the Development Server**
-   \`\`\`bash
-   npm run dev
-   \`\`\`
+```bash
+npm install
+```
 
-## 📚 Future Roadmap
-- Expanded crop catalog including root-based aeroponic models.
-- Supply chain APIs to dynamically pull localized wholesale crop prices.
+### 2) Configure env vars
 
-## License
-MIT License. See `LICENSE` for more information.
+Create a `.env.local` file in the repo root:
+
+```bash
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+# Supabase “anon public” key (JWT that starts with eyJ...)
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+
+# Optional but recommended for stable OAuth/email redirects in production
+VITE_SITE_URL=https://aero-farm-simulator.vercel.app
+```
+
+### 3) Run the dev server
+
+This project is configured to run on **port 7905**.
+
+```bash
+npm run dev
+```
+
+Open: http://localhost:7905
+
+---
+
+## Environment variables
+
+These are read at build time by Vite.
+
+- `VITE_SUPABASE_URL` (required)
+- `VITE_SUPABASE_ANON_KEY` (required)
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (legacy fallback; prefer `VITE_SUPABASE_ANON_KEY`)
+- `VITE_SITE_URL` (optional)
+	- If set, the app uses it for Supabase auth redirects (Google OAuth + email flows).
+	- If not set, it falls back to `window.location.origin`.
+
+---
+
+## Supabase setup
+
+### 1) Create a Supabase project
+
+Create a project in Supabase and copy:
+
+- Project URL → set as `VITE_SUPABASE_URL`
+- `anon` public key → set as `VITE_SUPABASE_ANON_KEY`
+
+### 2) Apply the database migration (required)
+
+This app stores history in these tables:
+
+- `profiles`
+- `simulation_runs`
+- `daily_states`
+
+To create them:
+
+1. Open Supabase → **SQL Editor**
+2. Run the migration file:
+	 - `supabase/migrations/20260311204846_78e1e28f-a584-443a-8cbf-e451e9d5c801.sql`
+
+What the migration does (high level):
+
+- Adds RLS policies so users can only access their own runs
+- Creates a trigger to auto-create `profiles` rows on signup
+
+---
+
+## Authentication setup
+
+### Email/password auth
+
+Works out of the box once your Supabase project + env vars are set.
+
+### Google OAuth (works locally but redirects wrong on Vercel)
+
+If Google login works on localhost but redirects incorrectly after deploying, it’s almost always because Supabase only allows redirects to URLs you explicitly configure.
+
+#### 1) Supabase “URL Configuration”
+
+In Supabase → **Authentication → URL Configuration**:
+
+- **Site URL:** `https://aero-farm-simulator.vercel.app`
+- **Redirect URLs:** add these entries (wildcards are allowed):
+	- `https://aero-farm-simulator.vercel.app/*`
+	- `http://localhost:7905/*`
+
+If you use Vercel Preview Deployments and want OAuth to work on previews too, add:
+
+- `https://*.vercel.app/*`
+
+Or, alternatively, force redirects to production by setting `VITE_SITE_URL=https://aero-farm-simulator.vercel.app` in Vercel.
+
+#### 2) Supabase “Google provider” setup
+
+In Supabase → **Authentication → Providers → Google**:
+
+- Enable Google provider
+- Follow the instructions shown there to configure your Google Cloud OAuth consent screen and client.
+
+Important: Google’s **Authorized redirect URI** is typically your Supabase callback URL:
+
+```
+https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
+```
+
+---
+
+## AI Crop Advisor (Edge Function)
+
+The AI Advisor page calls a Supabase Edge Function:
+
+- Function name: `ai-crop-advisor`
+- Source: `supabase/functions/ai-crop-advisor/index.ts`
+
+It sends the selected crop + your recent simulation history and receives a markdown recommendation.
+
+### Requirements
+
+- Deploy the Edge Function to your Supabase project
+- Configure an Edge Function secret:
+	- `GEMINI_API_KEY`
+	- (Optional) `GEMINI_MODEL` (default: `gemini-1.5-flash`)
+
+### Deploy (Supabase CLI)
+
+If you have the Supabase CLI installed and linked to your project:
+
+```bash
+supabase functions deploy ai-crop-advisor
+supabase secrets set GEMINI_API_KEY=YOUR_KEY
+
+# Optional
+supabase secrets set GEMINI_MODEL=gemini-1.5-flash
+```
+
+Notes:
+
+- If the AI endpoint returns `429`, that’s rate limiting.
+- If it returns `401/403`, check your `GEMINI_API_KEY`.
+
+---
+
+## Deploy to Vercel
+
+This is a client-side routed SPA (`react-router-dom`), so Vercel needs a rewrite to serve `index.html` for all routes.
+
+### 1) Vercel project settings
+
+- **Build Command:** `npm run build`
+- **Output Directory:** `dist`
+
+This repo already includes a rewrite config:
+
+- `vercel.json` rewrites `/(.*)` → `/`
+
+### 2) Vercel environment variables
+
+In Vercel → Project → Settings → Environment Variables (Production):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SITE_URL=https://aero-farm-simulator.vercel.app` (recommended)
+
+### 3) Supabase allow-list
+
+Make sure Supabase Redirect URLs includes:
+
+- `https://aero-farm-simulator.vercel.app/*`
+
+---
+
+## Scripts
+
+From `package.json`:
+
+- `npm run dev` — start dev server (port 7905)
+- `npm run build` — production build
+- `npm run preview` — preview the production build locally
+- `npm run lint` — run ESLint
+- `npm test` — run Vitest once
+- `npm run test:watch` — run Vitest in watch mode
+
+---
+
+## Project structure
+
+High-level map:
+
+- `src/pages/` — top-level routes (Dashboard, Simulator, AI Insights, Compare, Reports)
+- `src/components/` — UI + feature components
+- `src/lib/simulation/` — simulation engine (crops, environment, economics, optimizer)
+- `src/integrations/supabase/` — Supabase client + helpers
+- `supabase/migrations/` — database schema
+- `supabase/functions/` — Edge Functions (AI Crop Advisor)
+
+---
+
+## Troubleshooting
+
+### “Database tables not found (simulation_runs)”
+
+- Apply the migration SQL in `supabase/migrations/...sql`.
+
+### OAuth redirects work locally but not on Vercel
+
+- Add `https://aero-farm-simulator.vercel.app/*` to Supabase Redirect URLs.
+- Add `http://localhost:7905/*` for local development.
+- Set `VITE_SITE_URL` in Vercel to force a stable redirect target.
+
+### Vercel shows 404 on refresh for `/simulator` or `/reports`
+
+- Ensure `vercel.json` rewrites are present (they are in this repo).
+
+
+### Dev server won’t start
+
+- This app uses port **7905** with `strictPort: true`. If it’s in use, free the port or change it in `vite.config.ts`.
+
+---
+
+## Security notes
+
+- Never commit `.env.local`.
+- If you ever paste a URL containing `access_token`/`refresh_token`, treat it like a password and rotate/revoke the session.
+

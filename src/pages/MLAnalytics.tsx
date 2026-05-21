@@ -132,7 +132,18 @@ export default function MLAnalytics() {
                 <YAxis type="number" dataKey="y" name="Yield" unit=" kg" domain={['auto', 'auto']} stroke="#888888" fontSize={12} />
                 <ZAxis type="number" dataKey="z" range={[50, 400]} name="Profit" unit=" INR" />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} 
-                  contentStyle={{ backgroundColor: 'rgba(10, 10, 10, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(10, 10, 10, 0.95)', 
+                    border: '1px solid rgba(255,255,255,0.2)', 
+                    borderRadius: '8px', 
+                    color: '#ffffff',
+                    zIndex: 9999,
+                    padding: '10px 14px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                  }} 
+                  labelStyle={{ color: '#ffffff', fontWeight: 600, marginBottom: '4px' }}
+                  itemStyle={{ color: '#e0e0e0', fontSize: '13px' }}
+                  wrapperStyle={{ zIndex: 9999 }}
                 />
                 
                 {clusterGroups.map((group, index) => (

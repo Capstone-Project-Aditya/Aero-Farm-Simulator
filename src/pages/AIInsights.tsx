@@ -4,10 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Loader2, Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
+import { Brain, Loader2, Sparkles, TrendingUp, AlertTriangle, Thermometer, Sun, Wind, DollarSign, ShieldAlert, BarChart3, Leaf } from "lucide-react";
 import { getCropKeys, CROPS } from "@/lib/simulation/crops";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
 import {
   formatSupabaseError,
   isMissingSupabaseRelationWithStatus,
@@ -57,6 +59,176 @@ function getEdgeFunctionUrl(functionName: string): string | null {
     return null;
   }
 }
+
+/* ---------- Section icon mapping ---------- */
+function getSectionIcon(text: string) {
+  const t = text.toLowerCase();
+  if (t.includes("environment") || t.includes("temperature")) return <Thermometer className="h-5 w-5" />;
+  if (t.includes("light") || t.includes("photoperiod")) return <Sun className="h-5 w-5" />;
+  if (t.includes("performance") || t.includes("yield") || t.includes("predicted")) return <BarChart3 className="h-5 w-5" />;
+  if (t.includes("cost") || t.includes("revenue") || t.includes("profit") || t.includes("economic")) return <DollarSign className="h-5 w-5" />;
+  if (t.includes("risk") || t.includes("mitigation") || t.includes("disease")) return <ShieldAlert className="h-5 w-5" />;
+  if (t.includes("comparison") || t.includes("past") || t.includes("history")) return <TrendingUp className="h-5 w-5" />;
+  if (t.includes("co2") || t.includes("nutrient") || t.includes("air")) return <Wind className="h-5 w-5" />;
+  return <Leaf className="h-5 w-5" />;
+}
+
+/* ---------- Custom Markdown components ---------- */
+const markdownComponents: Components = {
+  h1: ({ children, ...props }) => (
+    <h1
+      className="text-2xl font-bold font-display text-foreground mb-4 pb-3 border-b-2 border-primary/20"
+      {...props}
+    >
+      {children}
+    </h1>
+  ),
+
+  h2: ({ children, ...props }) => {
+    const text = typeof children === "string" ? children : String(children ?? "");
+    return (
+      <div className="flex items-center gap-3 mt-8 mb-4 first:mt-0">
+        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 text-primary shrink-0">
+          {getSectionIcon(text)}
+        </div>
+        <h2
+          className="text-xl font-bold font-display text-foreground m-0"
+          {...props}
+        >
+          {children}
+        </h2>
+      </div>
+    );
+  },
+
+  h3: ({ children, ...props }) => (
+    <h3
+      className="text-base font-semibold font-display text-foreground mt-5 mb-2 pl-3 border-l-[3px] border-primary/30"
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+
+  h4: ({ children, ...props }) => (
+    <h4
+      className="text-sm font-semibold font-display mt-4 mb-1.5 uppercase tracking-wide text-muted-foreground"
+      {...props}
+    >
+      {children}
+    </h4>
+  ),
+
+  p: ({ children, ...props }) => (
+    <p className="text-sm leading-relaxed text-foreground/85 mb-3 last:mb-0" {...props}>
+      {children}
+    </p>
+  ),
+
+  strong: ({ children, ...props }) => (
+    <strong className="font-semibold text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+
+  ul: ({ children, ...props }) => (
+    <ul className="space-y-1.5 my-3 ml-1" {...props}>
+      {children}
+    </ul>
+  ),
+
+  ol: ({ children, ...props }) => (
+    <ol className="space-y-1.5 my-3 ml-1 list-decimal list-inside" {...props}>
+      {children}
+    </ol>
+  ),
+
+  li: ({ children, ...props }) => (
+    <li className="flex items-start gap-2 text-sm leading-relaxed text-foreground/85" {...props}>
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary/60 mt-2 shrink-0" />
+      <span className="flex-1">{children}</span>
+    </li>
+  ),
+
+  blockquote: ({ children, ...props }) => (
+    <blockquote
+      className="border-l-4 border-accent/50 bg-accent/5 rounded-r-lg px-4 py-3 my-4 text-sm italic text-foreground/80"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+
+  table: ({ children, ...props }) => (
+    <div className="my-4 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+
+  thead: ({ children, ...props }) => (
+    <thead className="bg-secondary/70 text-foreground" {...props}>
+      {children}
+    </thead>
+  ),
+
+  tbody: ({ children, ...props }) => (
+    <tbody className="divide-y divide-border" {...props}>
+      {children}
+    </tbody>
+  ),
+
+  tr: ({ children, ...props }) => (
+    <tr className="transition-colors hover:bg-secondary/30" {...props}>
+      {children}
+    </tr>
+  ),
+
+  th: ({ children, ...props }) => (
+    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground" {...props}>
+      {children}
+    </th>
+  ),
+
+  td: ({ children, ...props }) => (
+    <td className="px-4 py-2.5 text-sm text-foreground/85" {...props}>
+      {children}
+    </td>
+  ),
+
+  hr: (props) => (
+    <hr className="my-6 border-t border-border/50" {...props} />
+  ),
+
+  code: ({ children, className, ...props }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code
+          className="px-1.5 py-0.5 rounded-md bg-secondary text-primary font-mono text-xs font-medium"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className={`${className} text-xs`} {...props}>
+        {children}
+      </code>
+    );
+  },
+
+  pre: ({ children, ...props }) => (
+    <pre
+      className="my-4 rounded-lg bg-secondary/50 border border-border p-4 overflow-x-auto text-xs"
+      {...props}
+    >
+      {children}
+    </pre>
+  ),
+};
 
 export default function AIInsights() {
   const { user } = useAuth();
@@ -170,7 +342,7 @@ export default function AIInsights() {
 
         if (msg.includes("failed to send a request to the edge function")) {
           toast.error(
-            "Could not reach the Edge Function endpoint. Check VITE_SUPABASE_URL (must be your https://*.supabase.co URL), confirm the function is deployed, and ensure the request isn’t blocked by network/CORS."
+            "Could not reach the Edge Function endpoint. Check VITE_SUPABASE_URL (must be your https://*.supabase.co URL), confirm the function is deployed, and ensure the request isn't blocked by network/CORS."
           );
           console.error("Edge Function invoke network failure", {
             functionUrl: fnUrl,
@@ -311,16 +483,28 @@ export default function AIInsights() {
 
         <div>
           {aiResponse ? (
-            <Card className="shadow-elevated">
-              <CardHeader>
+            <Card className="shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+              <CardHeader className="pb-2 border-b border-border/50">
                 <CardTitle className="flex items-center gap-2 font-display">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  AI Recommendation for {CROPS[selectedCrop].name}
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="block text-lg">AI Recommendation</span>
+                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                      Optimized strategy for {CROPS[selectedCrop].name}
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="prose prose-sm max-w-none text-foreground prose-headings:font-display prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary">
-                  <ReactMarkdown>{aiResponse}</ReactMarkdown>
+              <CardContent className="pt-6">
+                <div className="ai-recommendation-content">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {aiResponse}
+                  </ReactMarkdown>
                 </div>
               </CardContent>
             </Card>

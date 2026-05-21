@@ -122,16 +122,35 @@ Crop database (Indian market):
 - Basil: 28-day cycle, optimal 20-28°C, 14h light, 1000ppm CO2, ₹250/kg
 - Spinach: 40-day cycle, optimal 15-22°C, 14h light, 900ppm CO2, ₹80/kg
 
-Provide recommendations in clear markdown with:
-1. **Optimal Environment Settings** — specific temperature, light hours, CO2, and plant count
-2. **Predicted Performance** — expected yield, revenue, and profitability  
-3. **Cost Optimization** — ways to reduce electricity, labour, and nutrient costs
-4. **Risk Assessment** — potential issues and mitigation strategies
-5. **Comparison with Past Runs** — how this recommendation improves on their history (if available)
+FORMAT RULES (follow these strictly):
+- Use proper markdown with clear ## headings for each major section
+- Keep paragraphs SHORT (2-3 sentences max). No walls of text.
+- Use bullet points for listing parameters, tips, and action items
+- Use **bold** for key metrics and values (e.g. **Temperature: 20°C**)
+- Use markdown tables (with | header | syntax) for the Risk Assessment section
+- Put each environment parameter on its own bullet point
+- Keep the overall response concise and scannable — a farmer should grasp key points in 30 seconds
 
-Use Indian Rupees (₹) for all monetary values. Be specific with numbers.`;
+REQUIRED SECTIONS (use these exact ## headings):
 
-    const userPrompt = `Give me an optimal crop recommendation for growing "${crop_key}" in an indoor aeroponic system. Include specific environment settings, expected economics, and actionable tips.${historyContext}`;
+## Optimal Environment Settings
+List each parameter as a bullet point with the value in bold, followed by a brief reason in parentheses.
+
+## Predicted Performance
+Show expected yield, revenue, costs, net profit, and ROI as bullet points. Keep numbers specific.
+
+## Cost Optimization Strategies
+Provide 3-5 actionable tips as bullet points. Each tip should be one concise sentence.
+
+## Risk Assessment & Mitigation
+Present as a markdown table with columns: Risk | Severity | Mitigation
+
+## Comparison with Past Runs
+If simulation history is available, show what changed and expected improvement. If no history, suggest running simulations first.
+
+Use Indian Rupees (₹) for all monetary values. Be specific with numbers. Do NOT write long paragraphs — keep it concise and actionable.`;
+
+    const userPrompt = `Give me a concise, well-structured recommendation for growing "${crop_key}" in an indoor aeroponic system. Follow the format rules exactly. Include specific numbers for all environment settings and economics.${historyContext}`;
 
     const finalPrompt = `${systemPrompt}\n\nUser Request: ${userPrompt}`;
 

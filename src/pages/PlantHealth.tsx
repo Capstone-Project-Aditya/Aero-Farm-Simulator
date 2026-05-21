@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfig } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UploadCloud, Loader2, Sparkles, X, Activity, Stethoscope, Gauge, Pill, ShieldCheck, Bug, Droplets, Leaf } from "lucide-react";
@@ -249,24 +249,49 @@ export default function PlantHealth() {
     toast.loading("AI is analyzing your plant...", { id: "vision-scan" });
 
     try {
-      const { data, error } = await supabase.functions.invoke("gemini-vision", {
-        body: { 
+      // Build the edge function URL the same way AI Insights does
+      const baseUrl = supabaseConfig.url?.replace(/\/+$/, "");
+      if (!baseUrl) {
+        throw new Error("Supabase URL is not configured.");
+      }
+      const fnUrl = `${baseUrl}/functions/v1/gemini-vision`;
+
+      // Get auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      const response = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          apikey: supabaseConfig.anonKey ?? "",
+        },
+        body: JSON.stringify({
           image_base64: imageBase64,
-          mime_type: imageFile?.type || "image/jpeg"
-        }
+          mime_type: imageFile?.type || "image/jpeg",
+        }),
       });
 
-      if (error) {
-        console.error("Function error:", error);
-        throw new Error("Failed to scan plant. Ensure the edge function is deployed.");
+      const rawText = await response.text();
+      let parsed: any;
+      try {
+        parsed = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        parsed = null;
       }
 
-      if (data?.error) {
-         throw new Error(data.error);
+      if (!response.ok) {
+        console.error("gemini-vision error:", response.status, rawText);
+        throw new Error(parsed?.error || `Scan failed (HTTP ${response.status})`);
+      }
+
+      if (parsed?.error) {
+        throw new Error(parsed.error);
       }
       
-      if (data?.diagnosis) {
-        setDiagnosis(data.diagnosis);
+      if (parsed?.diagnosis) {
+        setDiagnosis(parsed.diagnosis);
         toast.success("Scan complete!", { id: "vision-scan" });
       } else {
         throw new Error("Invalid response from AI.");

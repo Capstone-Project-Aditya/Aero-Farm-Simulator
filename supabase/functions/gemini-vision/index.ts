@@ -33,19 +33,27 @@ Deno.serve(async (req: Request) => {
     const prompt = `You are an expert plant pathologist and aeroponic farming specialist.
 Analyze this uploaded image of a plant/leaf.
 
-Provide your diagnosis in clear, well-structured markdown. Use these EXACT headers:
+FORMAT RULES (follow strictly):
+- Use proper markdown with ## headings for each section (no emoji in headings)
+- Keep paragraphs SHORT (2-3 sentences max). No walls of text.
+- Use bullet points for all actionable items
+- Use **bold** for key terms, chemical names, and values
+- Keep the total response concise and scannable
 
-## 🩺 Diagnosis & Analysis
-What do you see in this image? Identify the specific illness, pest, or nutrient deficiency. If the plant looks healthy, state that it is healthy.
+REQUIRED SECTIONS (use these exact ## headings):
 
-## 🌡️ Severity
-Is this a mild, moderate, or severe issue? Will it kill the crop if left untreated?
+## Diagnosis & Analysis
+Identify the specific illness, pest, or nutrient deficiency in 2-3 sentences. Name the exact condition (e.g. **Powdery Mildew**, **Nitrogen Deficiency**, **Spider Mites**). If healthy, state that clearly.
 
-## 💊 Aeroponic Treatment Plan
-Provide 3-4 specific, actionable organic steps to fix this issue in an indoor aeroponic environment. Be specific about pH adjustments, EC changes, biocontrols (like ladybugs or neem oil), or HVAC/humidity fixes.
+## Severity
+State severity as one word: **Mild**, **Moderate**, **Severe**, or **Healthy**. Follow with one sentence explaining the impact if untreated.
 
-## ⚠️ Prevention
-How can the farmer prevent this from happening in future cycles?`;
+## Aeroponic Treatment Plan
+Provide 3-4 specific steps as numbered bullet points. Each step should be one concise, actionable sentence. Include specific values for pH, EC, concentrations where applicable.
+
+## Prevention
+Provide 3-4 bullet points on how to prevent this in future cycles. Keep each point to one sentence.`;
+
 
     // Strip the "data:image/jpeg;base64," prefix if the frontend sent it
     const base64Data = image_base64.includes(",") ? image_base64.split(",")[1] : image_base64;

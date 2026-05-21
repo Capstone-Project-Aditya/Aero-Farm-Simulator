@@ -2,10 +2,205 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UploadCloud, Loader2, Sparkles, X, Activity } from "lucide-react";
+import { UploadCloud, Loader2, Sparkles, X, Activity, Stethoscope, Gauge, Pill, ShieldCheck, Bug, Droplets, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
+
+/* ---------- Section icon mapping ---------- */
+function getSectionIcon(text: string) {
+  const t = text.toLowerCase();
+  if (t.includes("diagnosis") || t.includes("analysis")) return <Stethoscope className="h-5 w-5" />;
+  if (t.includes("severity")) return <Gauge className="h-5 w-5" />;
+  if (t.includes("treatment") || t.includes("remedy")) return <Pill className="h-5 w-5" />;
+  if (t.includes("prevention") || t.includes("prevent")) return <ShieldCheck className="h-5 w-5" />;
+  if (t.includes("pest") || t.includes("insect")) return <Bug className="h-5 w-5" />;
+  if (t.includes("nutrient") || t.includes("deficiency")) return <Droplets className="h-5 w-5" />;
+  return <Leaf className="h-5 w-5" />;
+}
+
+/* ---------- Severity badge ---------- */
+function SeverityBadge({ text }: { text: string }) {
+  const t = text.toLowerCase();
+  if (t.includes("severe") || t.includes("critical") || t.includes("high")) {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">🔴 Severe</span>;
+  }
+  if (t.includes("moderate") || t.includes("medium")) {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">🟡 Moderate</span>;
+  }
+  if (t.includes("mild") || t.includes("low") || t.includes("minor")) {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">🟢 Mild</span>;
+  }
+  if (t.includes("healthy") || t.includes("no issue") || t.includes("normal")) {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">✅ Healthy</span>;
+  }
+  return null;
+}
+
+/* ---------- Custom Markdown components ---------- */
+const markdownComponents: Components = {
+  h1: ({ children, ...props }) => (
+    <h1
+      className="text-2xl font-bold font-display text-foreground mb-4 pb-3 border-b-2 border-primary/20"
+      {...props}
+    >
+      {children}
+    </h1>
+  ),
+
+  h2: ({ children, ...props }) => {
+    const text = typeof children === "string" ? children : String(children ?? "");
+    // Strip emoji from display text for icon matching
+    const cleanText = text.replace(/[\u{1F000}-\u{1FFFF}]/gu, "").trim();
+    return (
+      <div className="flex items-center gap-3 mt-8 mb-4 first:mt-0">
+        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 text-primary shrink-0">
+          {getSectionIcon(cleanText)}
+        </div>
+        <h2
+          className="text-xl font-bold font-display text-foreground m-0"
+          {...props}
+        >
+          {cleanText}
+        </h2>
+      </div>
+    );
+  },
+
+  h3: ({ children, ...props }) => (
+    <h3
+      className="text-base font-semibold font-display text-foreground mt-5 mb-2 pl-3 border-l-[3px] border-primary/30"
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+
+  h4: ({ children, ...props }) => (
+    <h4
+      className="text-sm font-semibold font-display mt-4 mb-1.5 uppercase tracking-wide text-muted-foreground"
+      {...props}
+    >
+      {children}
+    </h4>
+  ),
+
+  p: ({ children, ...props }) => {
+    const text = typeof children === "string" ? children : "";
+    const badge = <SeverityBadge text={text} />;
+    return (
+      <p className="text-sm leading-relaxed text-foreground/85 mb-3 last:mb-0" {...props}>
+        {badge && <span className="mr-2">{badge}</span>}
+        {children}
+      </p>
+    );
+  },
+
+  strong: ({ children, ...props }) => (
+    <strong className="font-semibold text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+
+  ul: ({ children, ...props }) => (
+    <ul className="space-y-1.5 my-3 ml-1" {...props}>
+      {children}
+    </ul>
+  ),
+
+  ol: ({ children, ...props }) => (
+    <ol className="space-y-2 my-3 ml-1 list-none counter-reset-step" {...props}>
+      {children}
+    </ol>
+  ),
+
+  li: ({ children, ...props }) => (
+    <li className="flex items-start gap-2 text-sm leading-relaxed text-foreground/85" {...props}>
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary/60 mt-2 shrink-0" />
+      <span className="flex-1">{children}</span>
+    </li>
+  ),
+
+  blockquote: ({ children, ...props }) => (
+    <blockquote
+      className="border-l-4 border-accent/50 bg-accent/5 rounded-r-lg px-4 py-3 my-4 text-sm italic text-foreground/80"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+
+  table: ({ children, ...props }) => (
+    <div className="my-4 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+
+  thead: ({ children, ...props }) => (
+    <thead className="bg-secondary/70 text-foreground" {...props}>
+      {children}
+    </thead>
+  ),
+
+  tbody: ({ children, ...props }) => (
+    <tbody className="divide-y divide-border" {...props}>
+      {children}
+    </tbody>
+  ),
+
+  tr: ({ children, ...props }) => (
+    <tr className="transition-colors hover:bg-secondary/30" {...props}>
+      {children}
+    </tr>
+  ),
+
+  th: ({ children, ...props }) => (
+    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground" {...props}>
+      {children}
+    </th>
+  ),
+
+  td: ({ children, ...props }) => (
+    <td className="px-4 py-2.5 text-sm text-foreground/85" {...props}>
+      {children}
+    </td>
+  ),
+
+  hr: (props) => (
+    <hr className="my-6 border-t border-border/50" {...props} />
+  ),
+
+  code: ({ children, className, ...props }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code
+          className="px-1.5 py-0.5 rounded-md bg-secondary text-primary font-mono text-xs font-medium"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className={`${className} text-xs`} {...props}>
+        {children}
+      </code>
+    );
+  },
+
+  pre: ({ children, ...props }) => (
+    <pre
+      className="my-4 rounded-lg bg-secondary/50 border border-border p-4 overflow-x-auto text-xs"
+      {...props}
+    >
+      {children}
+    </pre>
+  ),
+};
 
 export default function PlantHealth() {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -166,17 +361,33 @@ export default function PlantHealth() {
           </CardContent>
         </Card>
 
-        <Card className={`shadow-card ${!diagnosis ? "opacity-50" : ""}`}>
-          <CardHeader>
+        <Card className={`shadow-card transition-opacity duration-300 ${!diagnosis ? "opacity-50" : ""}`}>
+          <CardHeader className={diagnosis ? "pb-2 border-b border-border/50" : ""}>
             <CardTitle className="text-lg font-display flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Diagnosis & Treatment Plan
+              {diagnosis ? (
+                <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
+                  <Stethoscope className="h-5 w-5 text-primary" />
+                </div>
+              ) : (
+                <Sparkles className="h-5 w-5 text-primary" />
+              )}
+              <div>
+                <span className="block">Diagnosis & Treatment Plan</span>
+                {diagnosis && (
+                  <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                    AI-powered plant pathology report
+                  </span>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={diagnosis ? "pt-6" : ""}>
             {diagnosis ? (
-              <div className="prose prose-sm max-w-none text-foreground prose-headings:font-display prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary prose-table:text-sm prose-table:w-full prose-table:border-collapse prose-th:border prose-th:border-border prose-th:bg-secondary/50 prose-th:p-2 prose-td:border prose-td:border-border prose-td:p-2">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <div className="ai-recommendation-content animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={markdownComponents}
+                >
                   {diagnosis}
                 </ReactMarkdown>
               </div>

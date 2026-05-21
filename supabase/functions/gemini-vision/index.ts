@@ -59,7 +59,7 @@ Provide 3-4 bullet points on how to prevent this in future cycles. Keep each poi
     const base64Data = image_base64.includes(",") ? image_base64.split(",")[1] : image_base64;
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
       {
         method: "POST",
         headers: {
